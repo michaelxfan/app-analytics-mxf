@@ -12,6 +12,8 @@ interface PosthogEvent {
   properties?: Record<string, unknown> & { app_slug?: string; posthog_project_id?: string };
   team_id?: number | string;
   project_id?: number | string;
+  app_slug?: string;
+  current_url?: string;
 }
 
 function getEventArray(body: unknown): PosthogEvent[] {
@@ -81,7 +83,7 @@ export async function POST(req: NextRequest) {
 
   for (const e of events) {
     const props = e.properties ?? {};
-    const slug = urlSlug || props.app_slug || null;
+    const slug = urlSlug || e.app_slug || props.app_slug || null;
     const projectId =
       urlProjectId ||
       props.posthog_project_id ||
