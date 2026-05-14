@@ -80,6 +80,25 @@ trackAppEvent({
 
 The `app_slug` must match a row in `apps` — add it via Supabase or extend the seed.
 
+## PostHog integration
+
+Two ways to feed events into this dashboard:
+
+1. **Direct fetch** to `/api/track` — best for server-side events and apps that don't need PostHog's product surface.
+2. **PostHog → webhook → `/api/posthog/webhook`** — best when you already use PostHog for autocapture, session replay, funnels. PostHog stays the source of truth for raw events; this dashboard is the cross-app rollup.
+
+### PostHog setup (per app)
+
+1. In the app, install and init `posthog-js` with your project key.
+2. After init, always call `posthog.register({ app_slug: "<this-app-slug>" })` so every captured event carries the slug.
+3. In PostHog → Data pipeline → Destinations → New destination → **Webhook**:
+   - URL: `https://app-analytics-mxf.vercel.app/api/posthog/webhook?token=$POSTHOG_WEBHOOK_SECRET`
+   - Method: POST
+   - Format: PostHog JSON (default)
+4. Optional: instead of relying on `properties.app_slug`, pin one app per webhook by appending `&app_slug=<slug>` to the URL, or set the app's `posthog_project_id` in the `apps` table and the endpoint will look up by project id.
+
+The webhook dedupes on PostHog's event `uuid`, so retries are safe.
+
 ### Standard event taxonomy
 `app_opened`, `page_viewed`, `report_viewed`, `recommendation_generated`, `recommendation_accepted`, `recommendation_ignored`, `email_sent`, `task_created`, `decision_logged`, `feedback_submitted`.
 

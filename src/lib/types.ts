@@ -9,6 +9,10 @@ export interface AppRow {
   github_repo_url: string | null;
   supabase_project_name: string | null;
   supabase_project_group: string | null;
+  vercel_project_name: string | null;
+  vercel_url: string | null;
+  posthog_project_id: string | null;
+  posthog_api_host: string | null;
   category: string | null;
   status: AppStatus;
   priority: AppPriority;
