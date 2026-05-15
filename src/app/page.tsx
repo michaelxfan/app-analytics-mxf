@@ -32,6 +32,9 @@ function rollupToSortableRow(r: AppUsageRollup): SortableRow {
     thirty_change: r.thirtyDayChange,
     last_used: r.lastUsed,
     is_dormant: r.isDormant,
+    emails_sent_7d: r.emailsSent7d,
+    active_days_14d: r.activeDaysLast14,
+    hours_since_last: r.hoursSinceLast,
   };
 }
 
@@ -94,6 +97,7 @@ export default async function Page() {
   const totalApps = rollups.length;
   const activeThisWeek = rollups.filter((r) => r.eventsThisWeek > 0).length;
   const dormant = rollups.filter((r) => r.isDormant).length;
+  const emailsSentWeek = rollups.reduce((s, r) => s + r.emailsSent7d, 0);
   const mostUsed = [...rollups].sort((a, b) => b.eventsThisWeek - a.eventsThisWeek)[0]?.eventsThisWeek
     ? [...rollups].sort((a, b) => b.eventsThisWeek - a.eventsThisWeek)[0].app
     : null;
@@ -124,6 +128,7 @@ export default async function Page() {
         <div className="card-muted"><div className="stat-label">Dormant</div><div className="stat-value tabular">{dormant}</div></div>
         <div className="card-muted"><div className="stat-label">Events (7d)</div><div className="stat-value tabular">{totalEventsWeek}</div></div>
         <div className="card-muted"><div className="stat-label">Events (30d)</div><div className="stat-value tabular">{totalEventsThirty}</div></div>
+        <div className="card-muted"><div className="stat-label">Emails (7d)</div><div className="stat-value tabular">{emailsSentWeek}</div></div>
         <div className="card-muted">
           <div className="stat-label">Most used</div>
           <div className="stat-value" style={{ fontSize: 18 }}>{mostUsed?.app_name ?? "—"}</div>

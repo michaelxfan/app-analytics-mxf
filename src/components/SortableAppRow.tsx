@@ -24,13 +24,28 @@ export interface SortableRow {
   thirty_change: number;
   last_used: string | null;
   is_dormant: boolean;
+  emails_sent_7d: number;
+  active_days_14d: number;
+  hours_since_last: number | null;
 }
 
 function fmtDate(s: string | null): string {
   if (!s) return "—";
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-CA", { year: "numeric", month: "short", day: "numeric" });
+  return d.toLocaleDateString("en-CA", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "America/New_York",
+  });
+}
+
+function fmtSinceLast(hours: number | null): string {
+  if (hours === null) return "—";
+  if (hours < 1) return `${Math.round(hours * 60)}m`;
+  if (hours < 48) return `${Math.round(hours)}h`;
+  return `${Math.round(hours / 24)}d`;
 }
 
 function delta(n: number): string {
@@ -95,6 +110,9 @@ function Row({ row }: { row: SortableRow }) {
         <div className="tiny">{delta(row.thirty_change)}</div>
       </td>
       <td className="tabular" style={{ textAlign: "right" }}>{Math.round(row.usage_pct)}%</td>
+      <td className="tabular" style={{ textAlign: "right" }}>{row.active_days_14d}</td>
+      <td className="tabular" style={{ textAlign: "right" }}>{row.emails_sent_7d}</td>
+      <td className="tiny tabular" style={{ textAlign: "right" }}>{fmtSinceLast(row.hours_since_last)}</td>
       <td className="tiny">{fmtDate(row.last_used)}</td>
     </tr>
   );
@@ -146,6 +164,9 @@ export default function SortableAppTable({ rows: initial }: { rows: SortableRow[
               <th className="tabular" style={{ textAlign: "right" }}>7d</th>
               <th className="tabular" style={{ textAlign: "right" }}>30d</th>
               <th className="tabular" style={{ textAlign: "right" }}>Usage %</th>
+              <th className="tabular" style={{ textAlign: "right" }} title="Distinct EST calendar days with at least one event in the last 14 days">Active days (14d)</th>
+              <th className="tabular" style={{ textAlign: "right" }} title="Count of email_sent events in the last 7 days">Emails (7d)</th>
+              <th className="tabular" style={{ textAlign: "right" }}>Since last</th>
               <th>Last used</th>
             </tr>
           </thead>

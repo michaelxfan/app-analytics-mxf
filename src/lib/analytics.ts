@@ -53,6 +53,9 @@ export interface AppUsageRollup {
   isDormant: boolean;
   weeklyChange: number; // events this week vs prior 7
   thirtyDayChange: number; // events last 30 vs prior 30
+  emailsSent7d: number;
+  activeDaysLast14: number; // distinct EST calendar days with ≥1 event in the last 14 days
+  hoursSinceLast: number | null;
 }
 
 export async function computeRollups(now: Date = new Date()): Promise<{
@@ -84,6 +87,17 @@ export async function computeRollups(now: Date = new Date()): Promise<{
   const totalEventsWeek = allEvents.filter((e) => isWithin(e, sevenStart, endUtc)).length;
   const totalEventsThirty = allEvents.filter((e) => isWithin(e, thirtyStart, endUtc)).length;
 
+  const estDayKey = (iso: string) => {
+    // YYYY-MM-DD in America/New_York
+    const d = new Date(iso);
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/New_York",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+  };
+
   const rollups: AppUsageRollup[] = apps.map((app) => {
     const events = byApp.get(app.id) ?? [];
     const week = events.filter((e) => isWithin(e, sevenStart, endUtc)).length;
@@ -92,6 +106,19 @@ export async function computeRollups(now: Date = new Date()): Promise<{
     const priorThirty = events.filter((e) => isWithin(e, sixtyStart, thirtyStart)).length;
     const lastUsed = events.length > 0 ? events[0].occurred_at : null;
     const usagePct = totalEventsWeek > 0 ? (week / totalEventsWeek) * 100 : 0;
+
+    const emailsSent7d = events.filter(
+      (e) => e.event_name === "email_sent" && isWithin(e, sevenStart, endUtc)
+    ).length;
+
+    const last14Events = events.filter((e) => isWithin(e, fourteenStart, endUtc));
+    const activeDaysLast14 = new Set(last14Events.map((e) => estDayKey(e.occurred_at))).size;
+
+    const hoursSinceLast =
+      lastUsed === null
+        ? null
+        : (now.getTime() - new Date(lastUsed).getTime()) / 3_600_000;
+
     return {
       app,
       eventsThisWeek: week,
@@ -101,6 +128,9 @@ export async function computeRollups(now: Date = new Date()): Promise<{
       isDormant: thirty === 0,
       weeklyChange: week - priorWeek,
       thirtyDayChange: thirty - priorThirty,
+      emailsSent7d,
+      activeDaysLast14,
+      hoursSinceLast,
     };
   });
 
