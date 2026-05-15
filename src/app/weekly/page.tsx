@@ -66,7 +66,7 @@ export default async function WeeklyPage() {
               {top.map((r) => (
                 <li key={r.app.id} style={{ padding: "4px 0" }}>
                   <Link href={`/apps/${r.app.app_slug}`} className="link">{r.app.app_name}</Link>{" "}
-                  <span className="tiny">{r.eventsThisWeek} events · {r.usagePct.toFixed(1)}%</span>
+                  <span className="tiny">{r.eventsThisWeek} events · {Math.round(r.usagePct)}%</span>
                 </li>
               ))}
             </ul>

@@ -94,7 +94,7 @@ function Row({ row }: { row: SortableRow }) {
         {row.events_thirty}
         <div className="tiny">{delta(row.thirty_change)}</div>
       </td>
-      <td className="tabular" style={{ textAlign: "right" }}>{row.usage_pct.toFixed(1)}%</td>
+      <td className="tabular" style={{ textAlign: "right" }}>{Math.round(row.usage_pct)}%</td>
       <td className="tiny">{fmtDate(row.last_used)}</td>
     </tr>
   );

@@ -162,7 +162,7 @@ export default async function Page() {
                   <span>30d: <strong>{g.thirtyTotal}</strong></span>
                   <span>active: <strong>{g.activeCount}</strong></span>
                   <span>dormant: <strong>{g.dormantCount}</strong></span>
-                  <span>share: <strong>{pct.toFixed(1)}%</strong></span>
+                  <span>share: <strong>{Math.round(pct)}%</strong></span>
                 </span>
               </summary>
               <div style={{ overflow: "hidden" }}>

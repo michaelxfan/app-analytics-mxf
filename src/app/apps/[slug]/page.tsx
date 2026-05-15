@@ -60,7 +60,7 @@ export default async function AppDetail({ params }: { params: Promise<{ slug: st
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
         <div className="card-muted"><div className="stat-label">7-day</div><div className="stat-value tabular">{mine?.eventsThisWeek ?? 0}</div></div>
         <div className="card-muted"><div className="stat-label">30-day</div><div className="stat-value tabular">{mine?.eventsLast30Days ?? 0}</div></div>
-        <div className="card-muted"><div className="stat-label">Usage %</div><div className="stat-value tabular">{mine ? mine.usagePct.toFixed(1) : "0.0"}%</div></div>
+        <div className="card-muted"><div className="stat-label">Usage %</div><div className="stat-value tabular">{mine ? Math.round(mine.usagePct) : 0}%</div></div>
         <div className="card-muted"><div className="stat-label">Last active</div><div className="stat-value" style={{ fontSize: 16 }}>{mine?.lastUsed ? fmtDate(mine.lastUsed) : "—"}</div></div>
       </section>
 
