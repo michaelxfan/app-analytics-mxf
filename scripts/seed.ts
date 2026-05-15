@@ -1,5 +1,16 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-// Seeds the apps table. Usage: npm run seed
+// Seeds the apps table with the initial 12 apps. Usage: npm run seed
+//
+// Notes:
+// - This is the INITIAL bootstrap. The live database is the source of truth
+//   and has been edited heavily (Supabase project remappings, ~40 more apps
+//   discovered from Vercel, drag-to-reorder positions, etc.).
+// - Use this script only for first-time setup. After that, edit rows directly
+//   in Supabase or via the dashboard UI.
+// - Re-running this script with new apps is idempotent (upsert on app_slug).
+//   The `display_order` column is NOT touched, so user-set ordering persists.
+// - For server-side write access, RLS is enabled — this script requires
+//   SUPABASE_SERVICE_ROLE_KEY in .env.local (it bypasses RLS).
 import { createClient } from "@supabase/supabase-js";
 
 type Status = "active" | "experimental" | "paused" | "deprecated";

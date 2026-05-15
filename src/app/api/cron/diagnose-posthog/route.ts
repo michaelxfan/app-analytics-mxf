@@ -7,6 +7,10 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 const BURST_START = "2026-05-14T21:50:00Z";
+// One-shot guard: the cron schedule `0 23 14 5 *` fires every May 14 by
+// definition. Cap this endpoint to fire only on the calendar day we care about
+// (2026-05-14 UTC) so future May 14s become no-ops without re-deploying.
+const FIRE_DATE_UTC = "2026-05-14";
 
 function isAuthorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
@@ -27,6 +31,19 @@ interface PerAppRow {
 export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  // One-shot guard. Allow `?force=1` to bypass for manual reruns.
+  const url = new URL(req.url);
+  const force = url.searchParams.get("force") === "1";
+  const todayUtc = new Date().toISOString().slice(0, 10);
+  if (!force && todayUtc !== FIRE_DATE_UTC) {
+    return NextResponse.json({
+      skipped: true,
+      reason: "not_fire_date",
+      today_utc: todayUtc,
+      fire_date_utc: FIRE_DATE_UTC,
+    });
   }
 
   const admin = supabaseAdmin();

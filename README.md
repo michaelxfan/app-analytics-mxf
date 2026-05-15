@@ -4,10 +4,12 @@ Personal meta-dashboard: tracks every personal app I run across Supabase project
 
 ## Stack
 - Next.js 16 (App Router) on Vercel
-- Supabase (`personal-mxf` project) for storage
+- Supabase (`personal-mxf` project) for storage; **RLS enabled** on `apps`, `app_usage_events`, `weekly_app_summaries`. Server-side queries use the service role (which bypasses RLS); the anon key is blocked from these tables.
+- **Auth gate** via `@supabase/ssr` — the entire dashboard is behind a `/login` page. Public endpoints (`/api/track`, `/api/cron/*`, `/api/posthog/*`, `/api/auth/*`) are gated only by their own secrets.
 - Anthropic API for summaries + per-app recommendations
+- PostHog for cross-app event capture; events are mirrored here via a webhook destination (`/api/posthog/webhook`)
 - Resend for the weekly email
-- Vercel Cron for the Saturday 9am EST trigger
+- Vercel Cron for the Saturday 9am EST weekly digest + a one-shot diagnostic email
 
 ## Setup
 
@@ -19,12 +21,15 @@ Personal meta-dashboard: tracks every personal app I run across Supabase project
 2. **Env vars** — copy `.env.example` to `.env.local` and fill in:
    - `NEXT_PUBLIC_SUPABASE_URL` — `https://vabsoagduzrhomdmkxzc.supabase.co`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY` (server only)
+   - `SUPABASE_SERVICE_ROLE_KEY` (server-only; required — RLS blocks anon, so server code must use this)
    - `ANTHROPIC_API_KEY`
    - `RESEND_API_KEY`
    - `RESEND_FROM_EMAIL`
    - `WEEKLY_SUMMARY_EMAIL=michaelxuefan@gmail.com`
-   - `CRON_SECRET` — strong random; required on the cron endpoint
+   - `CRON_SECRET` — strong random; required on `/api/cron/*` endpoints
+   - `POSTHOG_WEBHOOK_SECRET` — required on `/api/posthog/webhook`
+   - `NEXT_PUBLIC_POSTHOG_KEY` — PostHog project key (`phc_…`) for the SDK
+   - `NEXT_PUBLIC_POSTHOG_HOST` (default `https://us.i.posthog.com`)
 
 3. **Schema** — already applied to `personal-mxf`. To re-apply locally, run `supabase/0001_init.sql`.
 
@@ -38,11 +43,12 @@ Personal meta-dashboard: tracks every personal app I run across Supabase project
    npm run dev
    ```
 
-## Pages
-- `/` — executive summary + portfolio table
-- `/apps/[slug]` — per-app detail with AI recommendation
+## Pages (all gated behind `/login`)
+- `/` — executive summary + portfolio grouped by Supabase project in collapsible cards. Each row is **drag-to-reorder** (persists per-group via the `display_order` column).
+- `/apps/[slug]` — per-app detail with AI recommendation (keep/improve/merge/archive)
 - `/weekly` — live + last-saved weekly view
-- `/integrate` — copy-paste tracking snippet
+- `/integrate` — copy-paste tracking snippet + PostHog webhook URL
+- `/login` — Supabase email/password sign-in
 
 ## Tracking from other apps
 
