@@ -19,6 +19,7 @@ export interface AppRow {
   description: string | null;
   notes: string | null;
   high_leverage: boolean;
+  display_order: number | null;
   created_at: string;
   updated_at: string;
 }

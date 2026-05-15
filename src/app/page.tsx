@@ -1,21 +1,8 @@
-import Link from "next/link";
 import { computeRollups, type AppUsageRollup } from "@/lib/analytics";
-import { StatusBadge, PriorityBadge, DormantBadge } from "@/components/Badges";
+import SortableAppTable, { type SortableRow } from "@/components/SortableAppRow";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-function fmtDate(s: string | null): string {
-  if (!s) return "—";
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-CA", { year: "numeric", month: "short", day: "numeric" });
-}
-
-function delta(n: number): string {
-  if (n === 0) return "±0";
-  return n > 0 ? `+${n}` : `${n}`;
-}
 
 interface Group {
   key: string;
@@ -25,6 +12,27 @@ interface Group {
   thirtyTotal: number;
   activeCount: number;
   dormantCount: number;
+}
+
+function rollupToSortableRow(r: AppUsageRollup): SortableRow {
+  const a = r.app;
+  return {
+    id: a.id,
+    app_slug: a.app_slug,
+    app_name: a.app_name,
+    app_url: a.app_url,
+    github_repo_url: a.github_repo_url,
+    category: a.category,
+    status: a.status,
+    priority: a.priority,
+    events_week: r.eventsThisWeek,
+    events_thirty: r.eventsLast30Days,
+    usage_pct: r.usagePct,
+    weekly_change: r.weeklyChange,
+    thirty_change: r.thirtyDayChange,
+    last_used: r.lastUsed,
+    is_dormant: r.isDormant,
+  };
 }
 
 function groupBySupabase(rollups: AppUsageRollup[]): Group[] {
@@ -37,7 +45,14 @@ function groupBySupabase(rollups: AppUsageRollup[]): Group[] {
   }
   const groups: Group[] = [];
   for (const [key, list] of byKey) {
-    list.sort((a, b) => b.eventsThisWeek - a.eventsThisWeek || a.app.app_name.localeCompare(b.app.app_name));
+    // Preserve display_order set by drag-to-reorder; fall back to weekly events, then name
+    list.sort((a, b) => {
+      const ao = a.app.display_order ?? Number.POSITIVE_INFINITY;
+      const bo = b.app.display_order ?? Number.POSITIVE_INFINITY;
+      if (ao !== bo) return ao - bo;
+      if (a.eventsThisWeek !== b.eventsThisWeek) return b.eventsThisWeek - a.eventsThisWeek;
+      return a.app.app_name.localeCompare(b.app.app_name);
+    });
     const weekTotal = list.reduce((s, r) => s + r.eventsThisWeek, 0);
     const thirtyTotal = list.reduce((s, r) => s + r.eventsLast30Days, 0);
     const activeCount = list.filter((r) => r.eventsThisWeek > 0).length;
@@ -58,55 +73,7 @@ function groupBySupabase(rollups: AppUsageRollup[]): Group[] {
 }
 
 function GroupTable({ rows }: { rows: AppUsageRollup[] }) {
-  return (
-    <table className="portfolio">
-      <thead>
-        <tr>
-          <th>App</th>
-          <th>Category</th>
-          <th>Status</th>
-          <th>Pri</th>
-          <th className="tabular" style={{ textAlign: "right" }}>7d</th>
-          <th className="tabular" style={{ textAlign: "right" }}>30d</th>
-          <th className="tabular" style={{ textAlign: "right" }}>Usage %</th>
-          <th>Last used</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r) => {
-          const a = r.app;
-          return (
-            <tr key={a.id}>
-              <td>
-                <Link href={`/apps/${a.app_slug}`} className="link" style={{ fontFamily: "var(--font-display)", fontSize: 15, color: "var(--text-primary)" }}>
-                  {a.app_name}
-                </Link>
-                {r.isDormant && <span style={{ marginLeft: 8 }}><DormantBadge /></span>}
-                <div className="tiny" style={{ marginTop: 2 }}>
-                  {a.app_url && <a href={a.app_url} target="_blank" rel="noreferrer" className="link">site</a>}
-                  {a.app_url && a.github_repo_url && <span> · </span>}
-                  {a.github_repo_url && <a href={a.github_repo_url} target="_blank" rel="noreferrer" className="link">repo</a>}
-                </div>
-              </td>
-              <td className="tiny">{a.category ?? "—"}</td>
-              <td><StatusBadge status={a.status} /></td>
-              <td><PriorityBadge priority={a.priority} /></td>
-              <td className="tabular" style={{ textAlign: "right" }}>
-                {r.eventsThisWeek}
-                <div className="tiny">{delta(r.weeklyChange)}</div>
-              </td>
-              <td className="tabular" style={{ textAlign: "right" }}>
-                {r.eventsLast30Days}
-                <div className="tiny">{delta(r.thirtyDayChange)}</div>
-              </td>
-              <td className="tabular" style={{ textAlign: "right" }}>{r.usagePct.toFixed(1)}%</td>
-              <td className="tiny">{fmtDate(r.lastUsed)}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  );
+  return <SortableAppTable rows={rows.map(rollupToSortableRow)} />;
 }
 
 export default async function Page() {

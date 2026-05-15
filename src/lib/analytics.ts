@@ -6,6 +6,7 @@ export async function fetchAllApps(): Promise<AppRow[]> {
   const { data, error } = await supabaseAdmin()
     .from("apps")
     .select("*")
+    .order("display_order", { ascending: true, nullsFirst: false })
     .order("app_name", { ascending: true });
   if (error) throw error;
   return (data ?? []) as AppRow[];
