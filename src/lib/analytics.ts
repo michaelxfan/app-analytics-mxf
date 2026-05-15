@@ -33,6 +33,36 @@ export async function fetchEventsBetween(start: Date, end: Date): Promise<UsageE
   return (data ?? []) as UsageEventRow[];
 }
 
+// Events that represent value created (vs. vanity opens/views).
+// Used to compute outcome share — the strongest single signal of "should I invest more here".
+export const OUTCOME_EVENT_NAMES = new Set([
+  "task_created",
+  "decision_logged",
+  "feedback_submitted",
+  "recommendation_accepted",
+  "email_sent",
+]);
+
+export function isOutcomeEvent(e: UsageEventRow): boolean {
+  return OUTCOME_EVENT_NAMES.has(e.event_name);
+}
+
+async function fetchFirstEventPerApp(): Promise<Map<string, string>> {
+  // Single round-trip: pull the earliest occurred_at per app_id.
+  // Postgres has no DISTINCT ON via PostgREST, so we fetch (app_id, occurred_at) ordered asc and dedupe in JS.
+  const { data, error } = await supabaseAdmin()
+    .from("app_usage_events")
+    .select("app_id, occurred_at")
+    .order("occurred_at", { ascending: true });
+  if (error) throw error;
+  const out = new Map<string, string>();
+  for (const row of (data ?? []) as { app_id: string | null; occurred_at: string }[]) {
+    if (!row.app_id) continue;
+    if (!out.has(row.app_id)) out.set(row.app_id, row.occurred_at);
+  }
+  return out;
+}
+
 export async function fetchEventsForApp(appId: string, limit = 200): Promise<UsageEventRow[]> {
   const { data, error } = await supabaseAdmin()
     .from("app_usage_events")
@@ -56,6 +86,10 @@ export interface AppUsageRollup {
   emailsSent7d: number;
   activeDaysLast14: number; // distinct EST calendar days with ≥1 event in the last 14 days
   hoursSinceLast: number | null;
+  outcomes7d: number; // count of outcome events in the last 7 days
+  outcomeShare7d: number; // outcomes7d / eventsThisWeek (0..1)
+  stickiness30: number; // distinct active days in last 30 / 30
+  firstEventAt: string | null; // earliest event ever, all-time
 }
 
 export async function computeRollups(now: Date = new Date()): Promise<{
@@ -69,7 +103,10 @@ export async function computeRollups(now: Date = new Date()): Promise<{
   const sevenStart = new Date(endUtc.getTime() - 7 * 24 * 60 * 60 * 1000);
   const fourteenStart = new Date(endUtc.getTime() - 14 * 24 * 60 * 60 * 1000);
 
-  const allEvents = await fetchEventsBetween(sixtyStart, endUtc);
+  const [allEvents, firstEventByApp] = await Promise.all([
+    fetchEventsBetween(sixtyStart, endUtc),
+    fetchFirstEventPerApp(),
+  ]);
 
   const byApp = new Map<string, UsageEventRow[]>();
   for (const e of allEvents) {
@@ -114,6 +151,15 @@ export async function computeRollups(now: Date = new Date()): Promise<{
     const last14Events = events.filter((e) => isWithin(e, fourteenStart, endUtc));
     const activeDaysLast14 = new Set(last14Events.map((e) => estDayKey(e.occurred_at))).size;
 
+    const last30Events = events.filter((e) => isWithin(e, thirtyStart, endUtc));
+    const activeDaysLast30 = new Set(last30Events.map((e) => estDayKey(e.occurred_at))).size;
+    const stickiness30 = activeDaysLast30 / 30;
+
+    const outcomes7d = events.filter(
+      (e) => isOutcomeEvent(e) && isWithin(e, sevenStart, endUtc)
+    ).length;
+    const outcomeShare7d = week > 0 ? outcomes7d / week : 0;
+
     const hoursSinceLast =
       lastUsed === null
         ? null
@@ -131,6 +177,10 @@ export async function computeRollups(now: Date = new Date()): Promise<{
       emailsSent7d,
       activeDaysLast14,
       hoursSinceLast,
+      outcomes7d,
+      outcomeShare7d,
+      stickiness30,
+      firstEventAt: firstEventByApp.get(app.id) ?? null,
     };
   });
 

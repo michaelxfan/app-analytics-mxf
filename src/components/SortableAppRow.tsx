@@ -27,6 +27,10 @@ export interface SortableRow {
   emails_sent_7d: number;
   active_days_14d: number;
   hours_since_last: number | null;
+  outcomes_7d: number;
+  outcome_share_7d: number;
+  stickiness_30: number;
+  first_event_at: string | null;
 }
 
 function fmtDate(s: string | null): string {
@@ -109,11 +113,16 @@ function Row({ row }: { row: SortableRow }) {
         {row.events_thirty}
         <div className="tiny">{delta(row.thirty_change)}</div>
       </td>
+      <td className="tabular" style={{ textAlign: "right" }}>
+        {row.outcomes_7d}
+        <div className="tiny">{row.events_week > 0 ? `${Math.round(row.outcome_share_7d * 100)}%` : "—"}</div>
+      </td>
       <td className="tabular" style={{ textAlign: "right" }}>{Math.round(row.usage_pct)}%</td>
       <td className="tabular" style={{ textAlign: "right" }}>{row.active_days_14d}</td>
+      <td className="tabular" style={{ textAlign: "right" }}>{Math.round(row.stickiness_30 * 100)}%</td>
       <td className="tabular" style={{ textAlign: "right" }}>{row.emails_sent_7d}</td>
       <td className="tiny tabular" style={{ textAlign: "right" }}>{fmtSinceLast(row.hours_since_last)}</td>
-      <td className="tiny">{fmtDate(row.last_used)}</td>
+      <td className="tiny">{fmtDate(row.first_event_at)}</td>
     </tr>
   );
 }
@@ -163,11 +172,13 @@ export default function SortableAppTable({ rows: initial }: { rows: SortableRow[
               <th>Pri</th>
               <th className="tabular" style={{ textAlign: "right" }}>7d</th>
               <th className="tabular" style={{ textAlign: "right" }}>30d</th>
+              <th className="tabular" style={{ textAlign: "right" }} title="Outcome events (task_created, decision_logged, feedback_submitted, recommendation_accepted, email_sent) in the last 7 days. Percent is share of total 7d events.">Outcomes (7d)</th>
               <th className="tabular" style={{ textAlign: "right" }}>Usage %</th>
               <th className="tabular" style={{ textAlign: "right" }} title="Distinct EST calendar days with at least one event in the last 14 days">Active days (14d)</th>
+              <th className="tabular" style={{ textAlign: "right" }} title="Distinct active EST calendar days in the last 30 / 30. Solo-app analogue to DAU/MAU.">Stick (30d)</th>
               <th className="tabular" style={{ textAlign: "right" }} title="Count of email_sent events in the last 7 days">Emails (7d)</th>
               <th className="tabular" style={{ textAlign: "right" }}>Since last</th>
-              <th>Last used</th>
+              <th title="First time this app ever fired an event">First seen</th>
             </tr>
           </thead>
           <tbody style={{ opacity: isPending ? 0.7 : 1, transition: "opacity 0.15s" }}>
